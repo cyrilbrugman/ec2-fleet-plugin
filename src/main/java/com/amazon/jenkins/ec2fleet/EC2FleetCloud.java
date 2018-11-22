@@ -90,7 +90,9 @@ public class EC2FleetCloud extends Cloud
     private transient Set<String> fleetInstancesCache;
     // dyingFleetInstancesCache contains Jenkins nodes known to be in the fleet that are ready to be terminated
     private transient Set<String> dyingFleetInstancesCache;
-
+    // bootingFleetInstancesCache contains Jenkins nodes known to be in the fleet that are booting
+    private transient Set<String> bootingFleetInstancesCache;
+    
     private static final Logger LOGGER = Logger.getLogger(EC2FleetCloud.class.getName());
 
     public static String join(final String separator, final Iterable<String> elements) {
@@ -141,6 +143,7 @@ public class EC2FleetCloud extends Cloud
         plannedNodesCache = new HashSet<NodeProvisioner.PlannedNode>();
         fleetInstancesCache = new HashSet<String>();
         dyingFleetInstancesCache = new HashSet<String>();
+        bootingFleetInstancesCache = new HashSet<String>();
     }
 
     public String getCredentialsId() {
@@ -245,6 +248,7 @@ public class EC2FleetCloud extends Cloud
 
         // Calculate the ceiling, without having to work with doubles from Math.ceil
         // https://stackoverflow.com/a/21830188/877024
+        final int excessworkload = excessWorkload - (bootingFleetInstancesCache.size() * numExecutors );
         final int weightedExcessWorkload = (excessWorkload + numExecutors - 1) / numExecutors;
         int targetCapacity = stats.getNumDesired() + weightedExcessWorkload;
 
@@ -336,6 +340,7 @@ public class EC2FleetCloud extends Cloud
         fleetInstancesCache.addAll(currentFleetInstances);
         fleetInstancesCache.removeAll(dyingFleetInstancesCache);
         fleetInstancesCache.retainAll(currentJenkinsNodes);
+        bootingFleetInstancesCache = newFleetInstances;
 
         LOGGER.log(Level.FINE, "# of current Jenkins nodes:" + currentJenkinsNodes.size());
         LOGGER.log(Level.FINE, "Fleet (" + getLabelString() + ") contains instances [" + join(", ", currentFleetInstances) + "]");
